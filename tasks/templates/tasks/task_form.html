@@ -1,0 +1,194 @@
+{% extends "tasks/base.html" %}
+{% block title %}{% if form.instance.pk %}Edit Task{% else %}New Task{% endif %} — TaskFlow{% endblock %}
+{% block nav_create %}{% if not form.instance.pk %}active{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .form-wrap {
+    max-width: 600px;
+  }
+
+  .form-group {
+    margin-bottom: 22px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .form-control {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-size: 14px;
+    font-family: var(--font-body);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .form-control:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+  }
+
+  .form-control::placeholder { color: var(--muted); }
+
+  textarea.form-control { resize: vertical; min-height: 90px; }
+
+  select.form-control {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+    cursor: pointer;
+  }
+
+  input[type="date"].form-control::-webkit-calendar-picker-indicator {
+    filter: invert(0.5);
+    cursor: pointer;
+  }
+
+  .form-error {
+    font-size: 12px;
+    color: var(--red);
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .priority-preview {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .priority-option {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--surface2);
+    color: var(--muted);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="topbar animate">
+  <div>
+    <div class="page-title">
+      {% if form.instance.pk %}Edit Task{% else %}New Task{% endif %}
+    </div>
+    <p style="color:var(--muted);font-size:13px;margin-top:4px;">
+      {% if form.instance.pk %}Update the task details below.{% else %}Fill in the details to create a new task.{% endif %}
+    </p>
+  </div>
+</div>
+
+<div class="card form-wrap animate delay-1">
+  <form method="POST" novalidate>
+    {% csrf_token %}
+
+    <!-- Title -->
+    <div class="form-group">
+      <label class="form-label" for="id_title">
+        <i class="fas fa-text-width"></i> Task Title
+      </label>
+      <input
+        type="text"
+        name="title"
+        id="id_title"
+        class="form-control"
+        placeholder="e.g. Fix login page bug"
+        value="{{ form.title.value|default:'' }}"
+        maxlength="200"
+        autofocus
+      />
+      {% for error in form.title.errors %}
+        <div class="form-error"><i class="fas fa-circle-exclamation"></i> {{ error }}</div>
+      {% endfor %}
+    </div>
+
+    <!-- Description -->
+    <div class="form-group">
+      <label class="form-label" for="id_description">
+        <i class="fas fa-align-left"></i> Notes <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span>
+      </label>
+      <textarea
+        name="description"
+        id="id_description"
+        class="form-control"
+        placeholder="Any extra details about this task..."
+        rows="3"
+      >{{ form.description.value|default:'' }}</textarea>
+    </div>
+
+    <!-- Priority -->
+    <div class="form-group">
+      <label class="form-label" for="id_priority">
+        <i class="fas fa-flag"></i> Priority
+      </label>
+      <select name="priority" id="id_priority" class="form-control">
+        <option value="low"    {% if form.priority.value == 'low'    %}selected{% endif %}>🟢 Low</option>
+        <option value="medium" {% if form.priority.value == 'medium' or not form.priority.value %}selected{% endif %}>🟡 Medium</option>
+        <option value="high"   {% if form.priority.value == 'high'   %}selected{% endif %}>🔴 High</option>
+      </select>
+    </div>
+
+    <!-- Due date -->
+    <div class="form-group">
+      <label class="form-label" for="id_due_date">
+        <i class="far fa-calendar"></i> Due Date <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span>
+      </label>
+      <input
+        type="date"
+        name="due_date"
+        id="id_due_date"
+        class="form-control"
+        value="{{ form.due_date.value|default:'' }}"
+      />
+      {% for error in form.due_date.errors %}
+        <div class="form-error"><i class="fas fa-circle-exclamation"></i> {{ error }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-check"></i>
+        {% if form.instance.pk %}Save Changes{% else %}Create Task{% endif %}
+      </button>
+      <a href="{% url 'task-list' %}" class="btn btn-ghost">
+        <i class="fas fa-arrow-left"></i> Cancel
+      </a>
+    </div>
+
+  </form>
+</div>
+
+{% endblock %}

@@ -1,0 +1,265 @@
+{% extends "tasks/base.html" %}
+{% block title %}My Tasks — TaskFlow{% endblock %}
+{% block nav_list %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+  .task-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .task-row::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    border-radius: 3px 0 0 3px;
+  }
+
+  .task-row.high::before   { background: var(--red); }
+  .task-row.medium::before { background: var(--orange); }
+  .task-row.low::before    { background: var(--green); }
+
+  .task-row:hover {
+    border-color: #353b50;
+    transform: translateX(2px);
+    background: var(--surface2);
+  }
+
+  .task-check {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    text-decoration: none;
+    color: transparent;
+    font-size: 10px;
+  }
+
+  .task-check:hover { border-color: var(--green); color: var(--green); }
+  .task-check.done  { background: var(--green); border-color: var(--green); color: #000; }
+
+  .task-info { flex: 1; min-width: 0; }
+
+  .task-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+  }
+
+  .task-title.completed-title {
+    text-decoration: line-through;
+    color: var(--muted);
+  }
+
+  .task-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .task-meta span {
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .overdue-tag {
+    background: rgba(239,68,68,0.12);
+    color: var(--red) !important;
+    border: 1px solid rgba(239,68,68,0.25);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10px !important;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .task-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .task-row:hover .task-actions { opacity: 1; }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--muted);
+  }
+
+  .empty-state i {
+    font-size: 36px;
+    margin-bottom: 12px;
+    display: block;
+    opacity: 0.4;
+  }
+
+  .empty-state p { font-size: 14px; }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 28px 0;
+  }
+
+  .completed-section { opacity: 0.7; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Topbar -->
+<div class="topbar animate">
+  <div>
+    <div class="page-title">My Tasks</div>
+    <p style="color:var(--muted);font-size:13px;margin-top:4px;">Stay on top of everything.</p>
+  </div>
+  <div class="topbar-actions">
+    <a href="{% url 'task-create' %}" class="btn btn-primary">
+      <i class="fas fa-plus"></i> New Task
+    </a>
+  </div>
+</div>
+
+<!-- Stats row -->
+<div class="stats-row animate delay-1">
+  <div class="stat-card s-purple">
+    <div class="stat-label">Total</div>
+    <div class="stat-value">{{ pending.count|add:completed.count }}</div>
+  </div>
+  <div class="stat-card s-green">
+    <div class="stat-label">Pending</div>
+    <div class="stat-value">{{ pending.count }}</div>
+  </div>
+  <div class="stat-card s-red">
+    <div class="stat-label">Overdue</div>
+    <div class="stat-value">{{ overdue_count }}</div>
+  </div>
+  <div class="stat-card s-orange">
+    <div class="stat-label">Completed</div>
+    <div class="stat-value">{{ completed.count }}</div>
+  </div>
+</div>
+
+<!-- Pending Tasks -->
+<div class="animate delay-2">
+  <div class="section-head">
+    <div class="section-title">
+      <i class="fas fa-circle-half-stroke" style="color:var(--accent)"></i>
+      Pending
+      <span class="section-count">{{ pending.count }}</span>
+    </div>
+  </div>
+
+  {% for task in pending %}
+  <div class="task-row {{ task.priority }}">
+    <a href="{% url 'toggle-complete' pk=task.pk %}" class="task-check" title="Mark done">
+      <i class="fas fa-check"></i>
+    </a>
+
+    <div class="task-info">
+      <div class="task-title">{{ task.title }}</div>
+      <div class="task-meta">
+        <span class="priority priority-{{ task.priority }}">
+          <i class="fas fa-circle" style="font-size:6px"></i>
+          {{ task.get_priority_display }}
+        </span>
+        {% if task.due_date %}
+          <span><i class="far fa-calendar"></i> {{ task.due_date }}</span>
+        {% endif %}
+        {% if task.is_overdue %}
+          <span class="overdue-tag"><i class="fas fa-exclamation-triangle"></i> Overdue</span>
+        {% endif %}
+        {% if task.description %}
+          <span><i class="far fa-file-lines"></i> Has notes</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="task-actions">
+      <a href="{% url 'task-edit' pk=task.pk %}" class="btn btn-ghost btn-sm">
+        <i class="fas fa-pen"></i> Edit
+      </a>
+      <a href="{% url 'task-delete' pk=task.pk %}" class="btn btn-danger btn-sm">
+        <i class="fas fa-trash"></i>
+      </a>
+    </div>
+  </div>
+  {% empty %}
+  <div class="card empty-state">
+    <i class="fas fa-party-horn"></i>
+    <p>All caught up! No pending tasks.</p>
+    <a href="{% url 'task-create' %}" class="btn btn-primary" style="margin-top:16px;">
+      <i class="fas fa-plus"></i> Add a task
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+{% if completed %}
+<hr class="divider">
+
+<!-- Completed Tasks -->
+<div class="animate delay-3 completed-section">
+  <div class="section-head">
+    <div class="section-title">
+      <i class="fas fa-circle-check" style="color:var(--green)"></i>
+      Completed
+      <span class="section-count">{{ completed.count }}</span>
+    </div>
+  </div>
+
+  {% for task in completed %}
+  <div class="task-row">
+    <a href="{% url 'toggle-complete' pk=task.pk %}" class="task-check done" title="Mark undone">
+      <i class="fas fa-check"></i>
+    </a>
+
+    <div class="task-info">
+      <div class="task-title completed-title">{{ task.title }}</div>
+      <div class="task-meta">
+        <span class="priority priority-{{ task.priority }}">{{ task.get_priority_display }}</span>
+        {% if task.due_date %}
+          <span><i class="far fa-calendar"></i> {{ task.due_date }}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="task-actions">
+      <a href="{% url 'task-delete' pk=task.pk %}" class="btn btn-danger btn-sm">
+        <i class="fas fa-trash"></i>
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
